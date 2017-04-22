@@ -289,7 +289,7 @@ class PocketsphinxAudioConsumer(Thread):
                     in_speech = True
                 elif in_speech:
                     # voice->silence
-                    logger.debug("silence->speech")
+                    # logger.debug("silence->speech")
                     in_speech = False
 
                     self.decoder.end_utt()

@@ -25,9 +25,9 @@ from pyee import EventEmitter
 from requests import HTTPError
 from requests.exceptions import ConnectionError
 
-from mycroft.client.speech.local_recognizer import LocalRecognizer
-from mycroft.client.speech.mic import MutableMicrophone, ResponsiveRecognizer
-from mycroft.client.speech.pocketsphinx_audio_consumer \
+from mycroft.client.lspeech.local_recognizer import LocalRecognizer
+from mycroft.client.lspeech.mic import MutableMicrophone, ResponsiveRecognizer
+from mycroft.client.lspeech.pocketsphinx_audio_consumer \
     import PocketsphinxAudioConsumer
 from mycroft.configuration import ConfigurationManager
 from mycroft.messagebus.message import Message

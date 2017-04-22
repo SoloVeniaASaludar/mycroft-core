@@ -21,7 +21,7 @@ import sys
 from threading import Thread, Lock
 
 from mycroft.client.enclosure.api import EnclosureAPI
-from mycroft.client.speech.listener import RecognizerLoop
+from mycroft.client.lspeech.listener import RecognizerLoop
 from mycroft.configuration import ConfigurationManager
 from mycroft.identity import IdentityManager
 from mycroft.messagebus.client.ws import WebsocketClient

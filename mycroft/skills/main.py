@@ -88,7 +88,7 @@ def _load_skills():
         skill_reload_thread
 
     # Create skill_manager listener and invoke the first time
-    ws.on('skill_manager', skills_manager)
+    # ws.on('skill_manager', skills_manager)
     ws.emit(Message("skill_manager", {}))
 
     # Create the Intent manager, which converts utterances to intents
