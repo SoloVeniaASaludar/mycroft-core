@@ -32,16 +32,16 @@ class SkillSession(object):
              Message("record", rec_chars, 
                  context={ "session": self.id } ) )
 
-    def speak(self, utterance, expect_response=False, context={} ):
+    def speak(self, utterance, expect_response=False ):
+        context={ "session": self.id }
         data = {'utterance': utterance,
                 'expect_response': expect_response}
         self.skill.emitter.emit(Message("speak", data, context = context ))
 
-    def speak_dialog(self, key, data={}, expect_response=False, context={} ):
+    def speak_dialog(self, key, data={}, expect_response=False ):
         self.speak(
             self.skill.dialog_renderer.render(key, data),
-            expect_response = expect_response,
-            context = context )
+            expect_response = expect_response )
 
 
 
