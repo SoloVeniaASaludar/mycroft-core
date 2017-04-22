@@ -1,0 +1,13 @@
+#JSGF V1.0;
+
+grammar prueba;
+    
+public <prueba> = <cmnd1> | <cmnd2> | <cmnd3> | <cmnd4> ;
+<cmnd1> = apaga la música ;
+<cmnd2> = pon música ;
+<cmnd3> = avisa <when> | <when> avisa ;
+<cmnd4> = graba un mensaje ;
+<when> = en <n1> ( minuto | minutos ) ;
+<n0> = un | dos | tres | cuatro | cinco | seis | siete | ocho | nueve ;
+<n1> = <n0> | treinta y <n0> ;
+

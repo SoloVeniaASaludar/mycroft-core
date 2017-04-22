@@ -14,6 +14,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Mycroft Core.  If not, see <http://www.gnu.org/licenses/>.
+
+import importlib
+
 from abc import ABCMeta, abstractmethod
 
 from speech_recognition import Recognizer
@@ -40,8 +43,11 @@ class STT(object):
 
     @staticmethod
     def init_language(config_core):
-        langs = config_core.get("lang", "en-US").split("-")
-        return langs[0].lower() + "-" + langs[1].upper()
+        lang = config_core.get("lang", "en-US")
+        langs = lang.split("-")
+        if len(langs) == 2:
+            return langs[0].lower() + "-" + langs[1].upper()
+        return lang
 
     @abstractmethod
     def execute(self, audio, language=None):
