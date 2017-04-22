@@ -7,7 +7,6 @@ from mycroft.util.log import getLogger
 from mycroft.messagebus.message import Message
 
 logger = getLogger(__name__)
-__author__ = 'seanfitz'
 
 class SkillSession(object):
     def __init__(self, id, skill):
