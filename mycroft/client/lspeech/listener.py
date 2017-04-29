@@ -183,13 +183,10 @@ class RecognizerLoop(EventEmitter):
         self.lang = config.get('lang')
         self.config = config.get('listener')
         self.rate = self.config.get('sample_rate')
-        device_index = self.config.get('device_index')
-
-        self.microphone = MutableMicrophone(device_index, self.rate)
-        # FIXME - channels are not been used
-        self.microphone.CHANNELS = self.config.get('channels')
+        self.device_index = self.config.get('device_index')
 
         self.state = RecognizerLoopState()
+        self.microphone = None
         self.audio_consumer = None
 
     def create_mycroft_recognizer(self, rate, lang):
@@ -210,11 +207,14 @@ class RecognizerLoop(EventEmitter):
 
         if self.config.get("producer", None) == "pocketsphinx":
             self.audio_consumer = PocketsphinxAudioConsumer(
-                self.config, self.lang, self.state,
-                self, self.microphone)
+                self.config, self.lang, self.state, self)
             self.audio_consumer.start()
 
         else:
+            self.microphone = MutableMicrophone(self.device_index, self.rate)
+            # FIXME - channels are not been used
+            self.microphone.CHANNELS = self.config.get('channels')
+
             self.mycroft_recognizer = self.create_mycroft_recognizer(
                                                 self.rate, self.lang)
             # TODO - localization
