@@ -159,6 +159,8 @@ def main():
         v = sys.argv[i+1]
         if k == 'device_index':
             listener_config[k]=int(v)
+        elif k == 'device_name':
+            listener_config[k]=v
 
     loop = RecognizerLoop()
     loop.on('recognizer_loop:utterance', handle_utterance)
