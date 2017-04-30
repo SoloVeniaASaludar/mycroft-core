@@ -113,8 +113,8 @@ elif [[ "$1" == "start" && -z "$2" ]]
 then
   start-mycroft service
   start-mycroft skills
-  start-mycroft-plugin mycroft-voice mycroft/client/lspeech/main.py device_index 1
-#  start-mycroft-nolog cli --quiet --simple
+#  start-mycroft-plugin mycroft-voice mycroft/client/lspeech/main.py device_index 1
+  start-mycroft-plugin mycroft-voice mycroft/client/lspeech/main.py
   exit 0
 elif [[ "$1" == "start" && "$2" == "-v" ]]
 then

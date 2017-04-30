@@ -224,10 +224,10 @@ class PocketsphinxAudioConsumer(Thread):
         return self.stream.read(self.CHUNK)
 
     def record_phrase(self):
-        logger.debug("Waiting for command[%s]...", self.grammar)
-        sec_per_buffer = float(self.CHUNK) / self.SAMPLE_RATE
+        logger.debug("Waiting for command: grammar=%s ...", self.grammar)
 
         # Maximum number of chunks to record before timing out
+        sec_per_buffer = float(self.CHUNK) / self.SAMPLE_RATE
         max_chunks = int(self.RECORDING_TIMEOUT / sec_per_buffer)
 
         # bytearray to store audio in
@@ -286,7 +286,6 @@ class PocketsphinxAudioConsumer(Thread):
 
     def wait_until_wake_word(self):
 
-        in_speech = False
         utt_running = False
         byte_data = ""
         wake_word_found = False
@@ -323,24 +322,10 @@ class PocketsphinxAudioConsumer(Thread):
 
             self.decoder.process_raw(chunk, False, False)
 
-            if self.decoder.get_in_speech():
-                # voice
-                if not in_speech:
-                    logger.debug("silence->speech")
-                in_speech = True
-
-            elif in_speech:
-                # voice->silence
-                logger.debug("speech->silence")
-                in_speech = False
-
-                self.decoder.end_utt()
-                utt_running = False
-
-                hyp = self.decoder.hyp()
-                if hyp:
-                    logger.debug("hypstr=%s", hyp.hypstr)
-                    wake_word_found = (self.wake_word in hyp.hypstr)
+            hyp = self.decoder.hyp()
+            if hyp and hyp.hypstr:
+                logger.debug("hypstr=%s", hyp.hypstr)
+                wake_word_found = (self.wake_word in hyp.hypstr)
 
         if utt_running:
             self.decoder.end_utt()
