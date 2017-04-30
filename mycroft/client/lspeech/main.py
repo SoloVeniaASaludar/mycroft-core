@@ -151,13 +151,22 @@ def main():
     lock = PIDLock("voice")
     ws = WebsocketClient()
     tts.init(ws)
+
     ConfigurationManager.init(ws)
+    listener_config = config.get('listener')
+    for i in range(1, len(sys.argv)-1, 2):
+        k = sys.argv[i]
+        v = sys.argv[i+1]
+        if k == 'device_index':
+            listener_config[k]=int(v)
+
     loop = RecognizerLoop()
     loop.on('recognizer_loop:utterance', handle_utterance)
     loop.on('recognizer_loop:record_begin', handle_record_begin)
     loop.on('recognizer_loop:wakeword', handle_wakeword)
     loop.on('recognizer_loop:record_end', handle_record_end)
     loop.on('speak', handle_speak)
+
     ws.on('open', handle_open)
     ws.on('speak', handle_speak)
     ws.on('record', handle_record)
@@ -168,6 +177,7 @@ def main():
     ws.on('recognizer_loop:wake_up', handle_wake_up)
     ws.on('mycroft.stop', handle_stop)
     ws.on("mycroft.paired", handle_paired)
+
     event_thread = Thread(target=connect)
     event_thread.setDaemon(True)
     event_thread.start()

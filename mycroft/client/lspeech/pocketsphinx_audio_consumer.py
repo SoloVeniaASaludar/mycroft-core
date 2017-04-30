@@ -102,9 +102,24 @@ class PocketsphinxAudioConsumer(Thread):
         if self.wake_word_ack_cmnd: 
             subprocess.call( self.wake_word_ack_cmnd )
 
+    def device_name_to_index(self, device_name):
+        numdevices = self.audio.get_device_count()
+        for device_index in range(0, numdevices):
+            device = self.audio.get_device_info_by_index(device_index)
+            if device_name == device.get('name'):
+                return device_index
+        return None
+
     def run(self):
+        device_name = self.config.get("device_name")
+        if device_name: 
+            device_index = self.device_name_to_index(device_name)
+        else:
+            device_index = self.config.get("device_index")
+        logger.debug("device_index=%s", device_index)
+
         self.stream = self.audio.open(
-            input_device_index = self.config.get("device_index"),
+            input_device_index = device_index,
             channels=1,
             format= pyaudio.get_format_from_width(self.SAMPLE_WIDTH),
             rate=self.SAMPLE_RATE,
@@ -179,7 +194,8 @@ class PocketsphinxAudioConsumer(Thread):
             self.metrics.attr('utterances', [text])
         else:
             logger.error("Speech Recognition could not understand audio")
-            self.__speak(self.msg_not_catch)
+            if self.msg_not_catch:
+                self.__speak(self.msg_not_catch)
 
     def __speak(self, utterance):
         payload = {

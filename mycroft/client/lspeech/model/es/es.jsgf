@@ -2,12 +2,14 @@
 
 grammar prueba;
     
-public <prueba> = <cmnd1> | <cmnd2> | <cmnd3> | <cmnd4> ;
+public <prueba> = <cmnd1> | <cmnd2> | <cmnd3> | <cmnd4> | <cmnd5> ;
 <cmnd1> = apaga la música ;
 <cmnd2> = pon música ;
 <cmnd3> = avisa <when> | <when> avisa ;
 <cmnd4> = graba un mensaje ;
+<cmnd5> = televisión pon canal <n0> ;
 <when> = en <n1> ( minuto | minutos ) ;
 <n0> = un | dos | tres | cuatro | cinco | seis | siete | ocho | nueve ;
 <n1> = <n0> | treinta y <n0> ;
+
 

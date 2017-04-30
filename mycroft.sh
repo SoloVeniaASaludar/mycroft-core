@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-./scripts/prepare-msm.sh
+# ./scripts/prepare-msm.sh
 
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
@@ -58,9 +58,20 @@ function start-mycroft-nolog {
   echo "Mycroft $1$2 started"
 }
 
+function start-mycroft-plugin {
+  name=$1
+  shift
+
+  echo "Mycroft $name starting..."
+
+  log=$SCRIPTS/logs/$name.log
+  $DIR/start.sh $* >$log 2>&1 &
+}
+
 function debug-start-mycroft {
-  $DIR/start.sh $1 $2
-  echo "Mycroft $1$2 started"
+  echo "Mycroft $* starting..."
+  log=$SCRIPTS/logs/$(basename $1).log
+  $DIR/start.sh $* >$log 2>&1 &
 }
 
 function stop-mycroft {
@@ -102,8 +113,8 @@ elif [[ "$1" == "start" && -z "$2" ]]
 then
   start-mycroft service
   start-mycroft skills
-  start-mycroft voice
-  start-mycroft-nolog cli --quiet --simple
+  start-mycroft-plugin mycroft-voice mycroft/client/lspeech/main.py device_index 1
+#  start-mycroft-nolog cli --quiet --simple
   exit 0
 elif [[ "$1" == "start" && "$2" == "-v" ]]
 then
