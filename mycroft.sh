@@ -115,6 +115,7 @@ then
   start-mycroft skills
 #  start-mycroft-plugin mycroft-voice mycroft/client/lspeech/main.py device_index 1
   start-mycroft-plugin mycroft-voice mycroft/client/lspeech/main.py
+#  start-mycroft cli
   exit 0
 elif [[ "$1" == "start" && "$2" == "-v" ]]
 then
