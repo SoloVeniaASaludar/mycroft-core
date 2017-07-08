@@ -7,9 +7,12 @@ public <prueba> = <cmnd1> | <cmnd2> | <cmnd3> | <cmnd4> | <cmnd5> ;
 <cmnd2> = pon música ;
 <cmnd3> = avisa <when> | <when> avisa ;
 <cmnd4> = graba un mensaje ;
-<cmnd5> = televisión pon canal <n0> ;
-<when> = en <n1> ( minuto | minutos ) ;
-<n0> = un | dos | tres | cuatro | cinco | seis | siete | ocho | nueve ;
-<n1> = <n0> | treinta y <n0> ;
+<cmnd5> = televisión pon canal <n_0_100> ;
+<when> = en <n_0_100> ( minuto | minutos ) ;
+
+<n_0_9> = cero | un | dos | tres | cuatro | cinco | seis | siete | ocho | nueve ;
+<n_10_29> = diez | once | doce | trece | catorce | quince | dieciséis | diecisiete | dieciocho | diecinueve | veinte | veintiuno | veintidós | veintitrés | veinticuatro | veinticinco | veintiséis | veintisiete | veintiocho | veintinueve ;
+<n_10n> = treinta | cuarenta | cincuenta | sesenta | setenta | ochenta | noventa ;
+<n_0_100> = <n_0_9> | <n_10_29> | <n_10n> [y <n_0_9>] ;
 
 

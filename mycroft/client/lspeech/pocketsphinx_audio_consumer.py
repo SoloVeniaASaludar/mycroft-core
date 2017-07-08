@@ -259,9 +259,10 @@ class PocketsphinxAudioConsumer(Thread):
 
             if self.decoder.get_in_speech():
                 # voice
-                in_speech = True
+                if not in_speech:
+                    logger.debug("silence->voice")
+                    in_speech = True
             elif in_speech:
-                # silence
                 # voice->silence
                 logger.debug("voice->silence")
                 in_speech = False

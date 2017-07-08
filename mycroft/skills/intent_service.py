@@ -39,6 +39,7 @@ class IntentService(object):
         self.emitter.on('detach_skill', self.handle_detach_skill)
 
     def handle_utterance(self, message):
+        logger.debug("msg.data=%s", message.data)
         # Get language of the utterance
         lang = message.data.get('lang', None)
         if not lang:
@@ -50,8 +51,10 @@ class IntentService(object):
         for utterance in utterances:
             try:
                 # normalize() changes "it's a boy" to "it is boy", etc.
+                normalized = normalize(utterance, lang)
+                logger.debug("normalized=%s",normalized)
                 best_intent = next(self.engine.determine_intent(
-                    normalize(utterance, lang), 100))
+                    normalized, 100))
 
                 # TODO - Should Adapt handle this?
                 best_intent['utterance'] = utterance
