@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 TOP=$(cd $(dirname $0) && pwd -L)
-VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${HOME}/.virtualenvs/mycroft"}
 
-# ${TOP}/scripts/prepare-msm.sh
+if [ -z "$WORKON_HOME" ]; then
+    VIRTUALENV_ROOT=${VIRTUALENV_ROOT:-"${HOME}/.virtualenvs/mycroft"}
+else
+    VIRTUALENV_ROOT="$WORKON_HOME/mycroft"
+fi
+
+${TOP}/scripts/prepare-msm.sh
 
 case $1 in
 	"service") SCRIPT=${TOP}/mycroft/messagebus/service/main.py ;;
@@ -13,11 +18,11 @@ case $1 in
 	"audiotest") SCRIPT=${TOP}/mycroft/util/audio_test.py ;;
 	"collector") SCRIPT=${TOP}/mycroft_data_collection/cli.py ;;
 	"unittest") SCRIPT=${TOP}/test/main.py ;;
-	"audioaccuracytest") SCRIPT=${TOP}/audio-accuracy-test/audio_accuracy_test.py ;;
+	"audioaccuracytest") SCRIPT=${TOP}/mycroft/audio-accuracy-test/audio_accuracy_test.py ;;
 	"sdkdoc") SCRIPT=${TOP}/doc/generate_sdk_docs.py ;;
     "enclosure") SCRIPT=${TOP}/mycroft/client/enclosure/main.py ;;
     "wifi") SCRIPT=${TOP}/mycroft/client/wifisetup/main.py ;;
-    *) SCRIPT=${TOP}/$1 ;;
+	*) echo "Usage: start.sh [service | skills | skill_container | voice | cli | audiotest| audioaccuracytest | collector | unittest | enclosure | sdkdoc | wifi]"; exit ;;
 esac
 
 echo "Starting $@"

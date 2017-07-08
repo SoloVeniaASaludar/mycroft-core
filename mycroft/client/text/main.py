@@ -250,26 +250,23 @@ def rebuild_filtered_log():
 
 def handle_speak(event):
     global chat
-    global tts
-    mutex.acquire()
+    utterance = event.data.get('utterance')
+    if bSimple:
+        print(">> " + utterance)
+    else:
+        chat.append(">> " + utterance)
+    draw_screen()
     if not bQuiet:
-        ws.emit(Message("recognizer_loop:audio_output_start"))
-    try:
-        utterance = event.data.get('utterance')
-        if bSimple:
-            print(">> " + utterance)
-        else:
-            chat.append(">> " + utterance)
-        draw_screen()
-        if not bQuiet:
-            if not tts:
-                tts = TTSFactory.create()
-                tts.init(ws)
+        global tts
+
+        mutex.acquire()
+        if not tts:
+            tts = TTSFactory.create()
+            tts.init(ws)
+        try:
             tts.execute(utterance)
-    finally:
-        mutex.release()
-        if not bQuiet:
-            ws.emit(Message("recognizer_loop:audio_output_end"))
+        finally:
+            mutex.release()
 
 
 def connect():
@@ -749,7 +746,7 @@ def main(stdscr):
                 # resizeterm() causes another curses.KEY_RESIZE, so
                 # we need to capture that to prevent a loop of resizes
                 c = scr.getch()
-            elif c == curses.KEY_BACKSPACE:
+            elif c == curses.KEY_BACKSPACE or c == 127:
                 # Backspace to erase a character in the utterance
                 line = line[:-1]
             elif curses.ascii.isascii(c):

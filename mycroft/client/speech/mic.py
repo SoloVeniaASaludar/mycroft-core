@@ -1,25 +1,26 @@
-# Copyright 2016 Mycroft AI, Inc.
-#
-# This file is part of Mycroft Core.
-#
-# Mycroft Core is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Mycroft Core is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Mycroft Core.  If not, see <http://www.gnu.org/licenses/>.
+""" Copyright 2016 Mycroft AI, Inc.
 
+ This file is part of Mycroft Core.
 
-import audioop
+ Mycroft Core is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ Mycroft Core is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with Mycroft Core.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 import collections
+import datetime
 import os
 from time import sleep
+import audioop
 
 import pyaudio
 import speech_recognition
@@ -38,13 +39,14 @@ from mycroft.util import (
 )
 from mycroft.util.log import getLogger
 
-config = ConfigurationManager.get()
+config = ConfigurationManager.instance()
 listener_config = config.get('listener')
 logger = getLogger(__name__)
 __author__ = 'seanfitz'
 
 
 class MutableStream(object):
+
     def __init__(self, wrapped_stream, format, muted=False):
         assert wrapped_stream is not None
         self.wrapped_stream = wrapped_stream
@@ -90,6 +92,7 @@ class MutableStream(object):
 
 
 class MutableMicrophone(Microphone):
+
     def __init__(self, device_index=None, sample_rate=16000, chunk_size=1024):
         Microphone.__init__(
             self, device_index=device_index, sample_rate=sample_rate,
@@ -125,12 +128,11 @@ class MutableMicrophone(Microphone):
         if self.stream:
             self.stream.unmute()
 
+    def is_muted(self):
+        return self.muted
+
 
 class ResponsiveRecognizer(speech_recognition.Recognizer):
-    # The maximum audio in seconds to keep for transcribing a phrase
-    # The wake word must fit in this time
-    SAVED_WW_SEC = 1.0
-
     # Padding of silence when feeding to pocketsphinx
     SILENCE_SEC = 0.01
 
@@ -154,12 +156,21 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
     SEC_BETWEEN_WW_CHECKS = 0.2
 
     def __init__(self, wake_word_recognizer):
+        # The maximum audio in seconds to keep for transcribing a phrase
+        # The wake word must fit in this time
+        num_phonemes = len(listener_config.get('phonemes').split())
+        len_phoneme = listener_config.get('phoneme_duration', 120) / 1000.0
+        self.SAVED_WW_SEC = num_phonemes * len_phoneme
+
         speech_recognition.Recognizer.__init__(self)
         self.wake_word_recognizer = wake_word_recognizer
         self.audio = pyaudio.PyAudio()
         self.multiplier = listener_config.get('multiplier')
         self.energy_ratio = listener_config.get('energy_ratio')
+        # check the config for the flag to save wake words.
+        self.save_wake_words = listener_config.get('record_wake_words')
         self.mic_level_file = os.path.join(get_ipc_directory(), "mic_level")
+        self._stop_signaled = False
 
     @staticmethod
     def record_sound_chunk(source):
@@ -168,10 +179,6 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
     @staticmethod
     def calc_energy(sound_chunk, sample_width):
         return audioop.rms(sound_chunk, sample_width)
-
-    def wake_word_in_audio(self, frame_data):
-        hyp = self.wake_word_recognizer.transcribe(frame_data)
-        return self.wake_word_recognizer.found_wake_word(hyp)
 
     def _record_phrase(self, source, sec_per_buffer):
         """Record an entire spoken phrase.
@@ -255,6 +262,8 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             recorded_too_much_silence = num_chunks > max_chunks_of_silence
             if quiet_enough and (was_loud_enough or recorded_too_much_silence):
                 phrase_complete = True
+
+            # Pressing top-button will end recording immediately
             if check_for_signal('buttonPress'):
                 phrase_complete = True
 
@@ -263,6 +272,32 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
     @staticmethod
     def sec_to_bytes(sec, source):
         return sec * source.SAMPLE_RATE * source.SAMPLE_WIDTH
+
+    def _skip_wake_word(self):
+        # Check if told programatically to skip the wake word, like
+        # when we are in a dialog with the user.
+        if check_for_signal('startListening'):
+            return True
+
+        # Pressing the Mark 1 button can start recording (unless
+        # it is being used to mean 'stop' instead)
+        if check_for_signal('buttonPress', 1):
+            # give other processes time to consume this signal if
+            # it was meant to be a 'stop'
+            sleep(0.25)
+            if check_for_signal('buttonPress'):
+                # Signal is still here, assume it was intended to
+                # begin recording
+                logger.debug("Button Pressed, wakeword not needed")
+                return True
+
+        return False
+
+    def stop(self):
+        """
+            Signal stop and exit waiting state.
+        """
+        self._stop_signaled = True
 
     def _wait_until_wake_word(self, source, sec_per_buffer):
         """Listen continuously on source until a wake word is spoken
@@ -297,11 +332,9 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         counter = 0
 
-        while not said_wake_word:
-            if check_for_signal('buttonPress'):
-                said_wake_word = True
-                continue
-
+        while not said_wake_word and not self._stop_signaled:
+            if self._skip_wake_word():
+                break
             chunk = self.record_sound_chunk(source)
 
             energy = self.calc_energy(chunk, source.SAMPLE_WIDTH)
@@ -345,7 +378,17 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
             buffers_since_check += 1.0
             if buffers_since_check > buffers_per_check:
                 buffers_since_check -= buffers_per_check
-                said_wake_word = self.wake_word_in_audio(byte_data + silence)
+                audio_data = byte_data + silence
+                said_wake_word = \
+                    self.wake_word_recognizer.found_wake_word(audio_data)
+                # if a wake word is success full then record audio in temp
+                # file.
+                if self.save_wake_words and said_wake_word:
+                    audio = self.create_audio_data(audio_data, source)
+                    stamp = str(datetime.datetime.now())
+                    filename = "/tmp/mycroft_wake_success%s.wav" % stamp
+                    with open(filename, 'wb') as filea:
+                        filea.write(audio.get_wav_data())
 
     @staticmethod
     def _create_audio_data(raw_data, source):
@@ -384,6 +427,8 @@ class ResponsiveRecognizer(speech_recognition.Recognizer):
 
         logger.debug("Waiting for wake word...")
         self._wait_until_wake_word(source, sec_per_buffer)
+        if self._stop_signaled:
+            return
 
         logger.debug("Recording...")
         emitter.emit("recognizer_loop:record_begin")

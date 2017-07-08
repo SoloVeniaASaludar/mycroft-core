@@ -18,6 +18,7 @@
 
 import json
 import os
+import subprocess
 import sys
 import time
 from os.path import exists, join
@@ -31,7 +32,10 @@ from mycroft.messagebus.message import Message
 from mycroft.skills.core import load_skill, create_skill_descriptor, \
     MainModule, SKILLS_DIR
 from mycroft.skills.intent_service import IntentService
+from mycroft.util import connected
 from mycroft.util.log import getLogger
+from mycroft.api import is_paired
+import mycroft.dialog
 
 logger = getLogger("Skills")
 
@@ -53,28 +57,52 @@ def connect():
     ws.run_forever()
 
 
-def skills_manager(message):
-    global skills_manager_timer, ws
+def install_default_skills(speak=True):
+    """
+        Install default skill set using msm.
 
-    if skills_manager_timer is None:
-        # TODO: Localization support
-        ws.emit(
-            Message("speak", {'utterance': "Checking for Updates"}))
-
-    # Install default skills and look for updates via Github
-    logger.debug("==== Invoking Mycroft Skill Manager: " + MSM_BIN)
+        Args:
+            speak (optional): Enable response for success. Default True
+    """
     if exists(MSM_BIN):
-        os.system(MSM_BIN + " default")
+        p = subprocess.Popen(MSM_BIN + " default", stderr=subprocess.STDOUT,
+                             stdout=subprocess.PIPE, shell=True)
+        (output, err) = p.communicate()
+        res = p.returncode
+        if res == 0 and speak:
+            # ws.emit(Message("speak", {
+            #     'utterance': mycroft.dialog.get("skills updated")}))
+            pass
+        elif not connected():
+            logger.error('msm failed, network connection is not available')
+            ws.emit(Message("speak", {
+                'utterance': mycroft.dialog.get("no network connection")}))
+        elif res != 0:
+            logger.error('msm failed with error {}: {}'.format(res, output))
+            ws.emit(Message("speak", {
+                'utterance': mycroft.dialog.get(
+                             "sorry I couldn't install default skills")}))
+
     else:
         logger.error("Unable to invoke Mycroft Skill Manager: " + MSM_BIN)
 
-    if skills_manager_timer is None:
-        # TODO: Localization support
-        ws.emit(Message("speak", {
-            'utterance': "Skills Updated. Mycroft is ready"}))
+
+def skills_manager(message):
+    global skills_manager_timer, ws
+
+    if connected():
+        if skills_manager_timer is None:
+            pass
+            # ws.emit(
+            #     Message("speak", {'utterance':
+            #             mycroft.dialog.get("checking for updates")}))
+
+        # Install default skills and look for updates via Github
+        logger.debug("==== Invoking Mycroft Skill Manager: " + MSM_BIN)
+        install_default_skills(False)
 
     # Perform check again once and hour
-    skills_manager_timer = Timer(3600.0, _skills_manager_dispatch)
+    skills_manager_timer = Timer(3600, _skills_manager_dispatch)
     skills_manager_timer.daemon = True
     skills_manager_timer.start()
 
@@ -87,9 +115,12 @@ def _load_skills():
     global ws, loaded_skills, last_modified_skill, skills_directories, \
         skill_reload_thread
 
+    check_connection()
+
     # Create skill_manager listener and invoke the first time
-    # ws.on('skill_manager', skills_manager)
-    ws.emit(Message("skill_manager", {}))
+    ws.on('skill_manager', skills_manager)
+    ws.on('mycroft.internet.connected', install_default_skills)
+    ws.emit(Message('skill_manager', {}))
 
     # Create the Intent manager, which converts utterances to intents
     # This is the heart of the voice invoked skill system
@@ -99,6 +130,23 @@ def _load_skills():
     skill_reload_thread = Timer(0, _watch_skills)
     skill_reload_thread.daemon = True
     skill_reload_thread.start()
+
+
+def check_connection():
+    if connected():
+        ws.emit(Message('mycroft.internet.connected'))
+        # check for pairing, if not automatically start pairing
+        if not is_paired():
+            # begin the process
+            payload = {
+                'utterances': ["pair my device"],
+                'lang': "en-us"
+            }
+            ws.emit(Message("recognizer_loop:utterance", payload))
+    else:
+        thread = Timer(1, check_connection)
+        thread.daemon = True
+        thread.start()
 
 
 def _get_last_modified_date(path):

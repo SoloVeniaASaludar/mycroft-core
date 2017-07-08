@@ -14,9 +14,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Mycroft Core.  If not, see <http://www.gnu.org/licenses/>.
-
-import importlib
-
 from abc import ABCMeta, abstractmethod
 
 from speech_recognition import Recognizer
@@ -77,7 +74,7 @@ class GoogleSTT(TokenSTT):
 
     def execute(self, audio, language=None):
         self.lang = language or self.lang
-        return self.recognizer.recognize_google(audio, self.token, s)
+        return self.recognizer.recognize_google(audio, self.token, self.lang)
 
 
 class WITSTT(TokenSTT):

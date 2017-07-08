@@ -18,11 +18,14 @@
 
 import abc
 import imp
+import time
+
 import os.path
 import re
-import signal
 import time
 from os.path import join, dirname, splitext, isdir
+
+from functools import wraps
 
 from adapt.intent import Intent
 
@@ -32,12 +35,12 @@ from mycroft.dialog import DialogLoader
 from mycroft.filesystem import FileSystemAccess
 from mycroft.messagebus.message import Message
 from mycroft.util.log import getLogger
-
+from mycroft.skills.settings import SkillSettings
 __author__ = 'seanfitz'
 
-signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+skills_config = ConfigurationManager.instance().get("skills")
+BLACKLISTED_SKILLS = skills_config.get("blacklisted_skills", [])
 
-BLACKLISTED_SKILLS = ["send_sms", "media"]
 SKILLS_DIR = "/opt/mycroft/skills"
 
 MainModule = '__init__'
@@ -105,9 +108,12 @@ def load_skill(skill_descriptor, emitter):
             # v2 skills framework
             skill = skill_module.create_skill()
             skill.bind(emitter)
+            skill._dir = dirname(skill_descriptor['info'][1])
             skill.load_data_files(dirname(skill_descriptor['info'][1]))
+            # Set up intent handlers
             skill.initialize()
-            logger.info("Lodaded " + skill_descriptor["name"])
+            skill._register_decorated()
+            logger.info("Loaded " + skill_descriptor["name"])
             return skill
         else:
             logger.warn(
@@ -161,6 +167,20 @@ def unload_skills(skills):
         s.shutdown()
 
 
+_intent_list = []
+
+
+def intent_handler(intent_parser):
+    """ Decorator for adding a method as an intent handler. """
+    def real_decorator(func):
+        @wraps(func)
+        def handler_method(*args, **kwargs):
+            return func(*args, **kwargs)
+        _intent_list.append((intent_parser, func))
+        return handler_method
+    return real_decorator
+
+
 class MycroftSkill(object):
     """
     Abstract base class which provides common behaviour and parameters to all
@@ -206,6 +226,15 @@ class MycroftSkill(object):
     def lang(self):
         return self.config_core.get('lang')
 
+    @property
+    def settings(self):
+        """ Load settings if not already loaded. """
+        try:
+            return self._settings
+        except:
+            self._settings = SkillSettings(join(self._dir, 'settings.json'))
+            return self._settings
+
     def bind(self, emitter):
         if emitter:
             self.emitter = emitter
@@ -229,9 +258,18 @@ class MycroftSkill(object):
 
         Usually used to create intents rules and register them.
         """
-        raise Exception("Initialize not implemented for skill: " + self.name)
+        logger.debug("No initialize function implemented")
 
-    def register_intent(self, intent_parser, handler):
+    def _register_decorated(self):
+        """
+        Register all intent handlers that has been decorated with an intent.
+        """
+        global _intent_list
+        for intent_parser, handler in _intent_list:
+            self.register_intent(intent_parser, handler, need_self=True)
+        _intent_list = []
+
+    def register_intent(self, intent_parser, handler, need_self=False):
         name = intent_parser.name
         intent_parser.name = self.name + ':' + intent_parser.name
         self.emitter.emit(Message("register_intent", intent_parser.__dict__))
@@ -239,7 +277,11 @@ class MycroftSkill(object):
 
         def receive_handler(message):
             try:
-                handler(message)
+                if need_self:
+                    # When registring from decorator self is required
+                    handler(self, message)
+                else:
+                    handler(message)
             except:
                 # TODO: Localize
                 self.speak(
@@ -295,7 +337,7 @@ class MycroftSkill(object):
         if os.path.exists(dialog_dir):
             self.dialog_renderer = DialogLoader().load(dialog_dir)
         else:
-            logger.error('No dialog loaded, ' + dialog_dir + ' does not exist')
+            logger.debug('No dialog loaded, ' + dialog_dir + ' does not exist')
 
     def load_data_files(self, root_directory):
         self.init_dialog(root_directory)
@@ -308,7 +350,7 @@ class MycroftSkill(object):
         if os.path.exists(vocab_dir):
             load_vocabulary(vocab_dir, self.emitter)
         else:
-            logger.error('No vocab loaded, ' + vocab_dir + ' does not exist')
+            logger.debug('No vocab loaded, ' + vocab_dir + ' does not exist')
 
     def load_regex_files(self, regex_dir):
         load_regex(regex_dir, self.emitter)
@@ -331,6 +373,8 @@ class MycroftSkill(object):
         process termination. The skill implementation must
         shutdown all processes and operations in execution.
         """
+        # Store settings
+        self.settings.store()
 
         # removing events
         for e, f in self.events:

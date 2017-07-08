@@ -19,16 +19,18 @@
 import os
 import tempfile
 import time
-from os.path import join, dirname, abspath
 
+from os.path import join, dirname, abspath
 from pocketsphinx import Decoder
+
+from mycroft.client.speech.recognizer.local_recognizer import LocalRecognizer
 
 __author__ = 'seanfitz, jdorleans'
 
 BASEDIR = dirname(abspath(__file__))
 
 
-class LocalRecognizer(object):
+class PocketsphinxRecognizer(LocalRecognizer):
     def __init__(self, key_phrase, phonemes, threshold, sample_rate=16000,
                  lang="en-us"):
         self.lang = str(lang)
@@ -53,7 +55,7 @@ class LocalRecognizer(object):
         config.set_string('-hmm', join(BASEDIR, 'model', self.lang, 'hmm'))
         config.set_string('-dict', dict_name)
         config.set_string('-keyphrase', self.key_phrase)
-        config.set_float('-kws_threshold', self.threshold)
+        config.set_float('-kws_threshold', float(self.threshold))
         config.set_float('-samprate', self.sample_rate)
         config.set_int('-nfft', 2048)
         config.set_string('-logfn', '/dev/null')
@@ -68,9 +70,6 @@ class LocalRecognizer(object):
             metrics.timer("mycroft.stt.local.time_s", time.time() - start)
         return self.decoder.hyp()
 
-    def is_recognized(self, byte_data, metrics):
-        hyp = self.transcribe(byte_data, metrics)
+    def found_wake_word(self, frame_data):
+        hyp = self.transcribe(frame_data)
         return hyp and self.key_phrase in hyp.hypstr.lower()
-
-    def found_wake_word(self, hypothesis):
-        return hypothesis and self.key_phrase in hypothesis.hypstr.lower()
