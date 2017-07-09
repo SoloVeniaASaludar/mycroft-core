@@ -97,7 +97,7 @@ class PocketsphinxAudioConsumer(Thread):
         decoder_config.set_float('-samprate', self.SAMPLE_RATE)
         decoder_config.set_float('-kws_threshold', self.config.get('threshold', 1) )
         decoder_config.set_string('-cmninit', '40,3,-1') 
-        decoder_config.set_string('-logfn', 'scripts/logs/decoder.log')
+        decoder_config.set_string('-logfn', '/tmp/pocketsphinx.log')
         return decoder_config
 
     def wake_word_ack(self):
