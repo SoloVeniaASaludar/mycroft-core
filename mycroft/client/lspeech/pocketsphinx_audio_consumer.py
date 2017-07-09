@@ -72,8 +72,10 @@ class PocketsphinxAudioConsumer(Thread):
         self.msg_awake = self.config.get('msg_awake', "I'm awake")
         self.msg_not_catch = self.config.get(
              'msg_not_catch', "Sorry, I didn't catch that")
-        s = self.config.get('wake_word_ack_cmnd')
-        self.wake_word_ack_cmnd = s.split(' ')
+        self.wake_word_ack_cmnd = None
+	s = self.config.get('wake_word_ack_cmnd')
+        if s:
+            self.wake_word_ack_cmnd = s.split(' ')
 
         self.metrics = MetricsAggregator()
 
