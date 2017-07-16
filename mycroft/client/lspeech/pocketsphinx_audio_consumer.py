@@ -82,10 +82,10 @@ class PocketsphinxAudioConsumer(Thread):
         model_lang_dir = join(BASEDIR, 'model', str(self.lang))
         self.decoder = Decoder(self.create_decoder_config(model_lang_dir))
         self.decoder.set_keyphrase('wake_word', self.wake_word)
-        jsgf = join(model_lang_dir, 'es.jsgf')
+        jsgf = join(model_lang_dir, self.lang, '.jsgf')
         if exists(jsgf):
             self.decoder.set_jsgf_file('jsgf', jsgf)
-        lm = join(model_lang_dir, 'es.lm')
+        lm = join(model_lang_dir, self.lang, '.lm')
         if exists(lm):
             self.decoder.set_lm_file('lm', lm)
 
@@ -93,7 +93,7 @@ class PocketsphinxAudioConsumer(Thread):
         decoder_config = Decoder.default_config()
         hmm_dir = join(model_lang_dir, 'hmm')
         decoder_config.set_string('-hmm', join(model_lang_dir, hmm_dir))
-        decoder_config.set_string('-dict', join(model_lang_dir, 'es.dict'))
+        decoder_config.set_string('-dict', join(model_lang_dir, self.lang, '.dict'))
         decoder_config.set_float('-samprate', self.SAMPLE_RATE)
         decoder_config.set_float('-kws_threshold', self.config.get('threshold', 1) )
         decoder_config.set_string('-cmninit', '40,3,-1') 
